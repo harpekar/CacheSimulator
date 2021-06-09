@@ -1,0 +1,9 @@
+L 0,4 243 L1 miss 
+L 1f,1 13 L1 hit
+L 100,1 243 L1 miss 
+S 200,1 256 L1 miss 
+L 300,8 243 L1 miss eviction
+L 400,12 243 L1 miss eviction
+L 500,4 473 L1 miss eviction
+L1 Cache: Hits:1 Misses:6 Evictions:3
+Cycles:1714 Reads:6 Writes:1

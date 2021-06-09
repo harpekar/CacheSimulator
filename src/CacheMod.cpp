@@ -32,6 +32,8 @@ for (block = CacheEntry.begin(); block != CacheEntry.end(); block++) {
         }
         else {
             CacheEntry.front().dirtyBit = true;
+
+            std::cout << CacheEntry.front().dirtyBit << std::endl;
         }
 
         return;
@@ -40,16 +42,23 @@ for (block = CacheEntry.begin(); block != CacheEntry.end(); block++) {
 
 //If it is not a hit, it is either a miss (and addition) or an eviction. 
 
-BlockEntry requBlock {true,false,tag};
+BlockEntry requBlock {false,true,tag};
 
-response->cycles += config.memoryAccessCycles;
-
+if (config.wp == WritePolicy::WriteThrough)
+    response->cycles += config.memoryAccessCycles;
 
 //If this line of the cache is full, it must be an eviction
  
-if (CacheEntry.size() == config.associativity) { 
-    if (config.rp == ReplacementPolicy::LRU)
+if (CacheEntry.size() == config.associativity) {
+
+    if ((config.wp == WritePolicy::WriteBack) && (CacheEntry.back().dirtyBit == true)) {
+        std::cout << "Writing back" << std::endl; 
+        response->cycles += config.memoryAccessCycles;
+    }
+
+    if (config.rp == ReplacementPolicy::LRU) {
         CacheEntry.pop_back();
+    }
     
     else {
         int random = rand() % CacheEntry.size();
@@ -66,16 +75,19 @@ if (CacheEntry.size() == config.associativity) {
 }
 
 CacheEntry.push_front(requBlock);
+
+CacheEntry.front().dirtyBit = true;
+
 response->misses += 1;
 
 std::cout << "A Miss" << std::endl;
 
 //Must update main memory after write is completed
-if (config.wp == WritePolicy::WriteThrough) { 
+//if (config.wp == WritePolicy::WriteThrough) { 
 
-    response->cycles += (config.memoryAccessCycles + config.cacheAccessCycles);
+response->cycles += (config.memoryAccessCycles + config.cacheAccessCycles);
 
-}
+//}
 
 return;
 
@@ -111,9 +123,11 @@ for (block = CacheEntry.begin(); block != CacheEntry.end(); block++) {
 //If this line of the cache is full, it must be an eviction
  
 if (CacheEntry.size() == config.associativity) {
+
+    if ((config.wp == WritePolicy::WriteBack) && (CacheEntry.back().dirtyBit == true)) 
+        response->cycles += config.memoryAccessCycles;
+
     if (config.rp == ReplacementPolicy::LRU)
-
-
         CacheEntry.pop_back();
     
     else {
@@ -121,8 +135,8 @@ if (CacheEntry.size() == config.associativity) {
         block = CacheEntry.begin();
         advance(block, random);    
         CacheEntry.erase(block);
-
     }
+
 
     response->evictions += 1;
 
@@ -130,13 +144,12 @@ if (CacheEntry.size() == config.associativity) {
 
 }
 
-//If it is not a hit, it is a miss and possibly an eviction. 
+//Miss
 
-BlockEntry requBlock {true,false,tag};
+BlockEntry requBlock {false,true,tag};
 
+//if (config.wp == WritePolicy::WriteThrough)
 response->cycles += config.memoryAccessCycles;
-
-std::cout << "size is " << CacheEntry.size() << std::endl;
 
 CacheEntry.push_front(requBlock);
 response->misses += 1;
