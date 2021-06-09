@@ -11,6 +11,8 @@
 #include <cmath>
 #include <list>
 
+#include <bitset>
+
 #include "CacheController.h"
 #include "BlockEntry.h"
 #include "CacheMod.h"
@@ -25,8 +27,8 @@ CacheController::CacheController(CacheInfo ci, string tracefile) {
 	this->outputFile = this->inputFile + ".out";
 	// compute the other cache parameters
 
-
 	this->ci.numByteOffsetBits = log2(ci.blockSize);
+
 	this->ci.numSetIndexBits = log2(ci.numberSets);
 	
     // initialize the counters
@@ -35,8 +37,8 @@ CacheController::CacheController(CacheInfo ci, string tracefile) {
 	this->globalMisses = 0;
 	this->globalEvictions = 0;
 
-    //this->writeNum = 0;
-    //this->readNum = 0;
+    this->globalWrite = 0;
+    this->globalRead = 0;
 
 
     //Initialize Cache
@@ -56,35 +58,41 @@ CacheController::CacheController(CacheInfo ci, string tracefile) {
 }
 
 void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigned long int address, int numBytes) {
- 
+
+    // determine the index and tag
+	AddressInfo ai = getAddressInfo(address);
+
+	cout << "\tSet index: " << ai.setIndex << ", tag: " << ai.tag << endl;
+
+
+
     //Reset counters
     response->hits = 0;
     response->misses = 0;
     response->evictions = 0;
 
     response->cycles = 0;
+    
+    double requOps = ceil((double)numBytes / ci.blockSize);
 
-    // determine the index and tag
-	AddressInfo ai = getAddressInfo(address);
-
-    unsigned int cycleNumber = 0;
-
-	cout << "\tSet index: " << ai.setIndex << ", tag: " << ai.tag << endl;
-
+    for (int operations = 0; operations < int(requOps); operations++) {
+    
     if (isWrite) {
-        writeToCache(programCache.at(ai.setIndex), ai.tag, ci, response);
+        writeToCache(programCache.at(ai.setIndex + operations), ai.tag, ci, response);
     }
 
     else {
-        readFromCache(programCache.at(ai.setIndex), ai.tag, ci, response);
+        readFromCache(programCache.at(ai.setIndex + operations), ai.tag, ci, response);
     }
 
     // "Response" data structure maintains counters of hits, misses, and evictions, so load those into global counters
 
-    globalHits += int(response->hits);
-    globalMisses += int(!response->hits);
+    }
+
+    globalHits += response->hits;
+    globalMisses += response->misses;
     
-    globalEvictions += int(response->evictions); 
+    globalEvictions += response->evictions; 
 
     globalCycles += response->cycles; 
 
@@ -93,8 +101,6 @@ void CacheController::cacheAccess(CacheResponse* response, bool isWrite, unsigne
 		cout << "Operation at address " << std::hex << address << " caused " << response->hits << " hit(s)." << std::dec << endl;
 	if (response->misses > 0)
 		cout << "Operation at address " << std::hex << address << " caused " << response->misses << " miss(es)." << std::dec << endl;
-
-
 
 	cout << "-----------------------------------------" << endl;
 
@@ -140,7 +146,7 @@ void CacheController::runTracefile() {
         
         else if (std::regex_match(line, match, loadPattern)) {
 			cout << "Found a load op!" << endl;
-            readNum++;
+            globalRead++;
 			istringstream hexStream(match.str(2));
 			hexStream >> std::hex >> address;
 			outfile << match.str(1) << match.str(2) << match.str(3) << match.str(4);
@@ -151,7 +157,7 @@ void CacheController::runTracefile() {
         
         else if (std::regex_match(line, match, storePattern)) {
 			cout << "Found a store op!" << endl;
-            writeNum++;
+            globalWrite++;
 			istringstream hexStream(match.str(2));
 			hexStream >> std::hex >> address;
 			outfile << match.str(1) << match.str(2) << match.str(3) << match.str(4);
@@ -163,14 +169,14 @@ void CacheController::runTracefile() {
 			cout << "Found a modify op!" << endl;
 			istringstream hexStream(match.str(2));
 			// first process the read operation
-            //readNum++;
+            globalRead++;
 			hexStream >> std::hex >> address;
 			outfile << match.str(1) << match.str(2) << match.str(3) << match.str(4);
 			cacheAccess(&response, false, address, stoi(match.str(4)));
 			logEntry(outfile, &response);
 			outfile << endl;
 			// now process the write operation
-            //writeNum++;
+            globalWrite++;
 			hexStream >> std::hex >> address;
 			outfile << match.str(1) << match.str(2) << match.str(3) << match.str(4);
 			cacheAccess(&response, true, address, stoi(match.str(4)));
@@ -186,23 +192,27 @@ void CacheController::runTracefile() {
 
 	// add the final cache statistics
 	outfile << "L1 Cache: Hits:" << globalHits << " Misses:" << globalMisses << " Evictions:" << globalEvictions << endl;
-	outfile << "Cycles:" << globalCycles << " Reads:" << readNum << " Writes:" << writeNum << endl;
+	outfile << "Cycles:" << globalCycles << " Reads:" << globalRead << " Writes:" << globalWrite << endl;
+
 
 	infile.close();
-	outfile.close();
+    
+    cout << "Closing file" << endl;
+
+    outfile.close();
 }
 
 /*
 	Report the results of a memory access operation.
 */
 void CacheController::logEntry(ofstream& outfile, CacheResponse* response) {
-	outfile << " " << response->cycles;
-	if (response->hits > 0)
-		outfile << " hit";
+	outfile << " " << response->cycles << " L1 ";	
 	if (response->misses > 0)
-		outfile << " miss";
+		outfile << "miss ";
+    if (response->hits > 0)
+		outfile << "hit";
 	if (response->evictions > 0)
-		outfile << " eviction";
+		outfile << "eviction";
 }
 
 /*
@@ -213,10 +223,12 @@ CacheController::AddressInfo CacheController::getAddressInfo(unsigned long int a
 	// this code should be changed to assign the proper index and tag
 
     //Isolate Tag bits (end of address) by shifting   
-    ai.tag = address >> (ci.numByteOffsetBits + ci.numSetIndexBits);
+    ai.tag = address >> (this->ci.numByteOffsetBits + this->ci.numSetIndexBits);
 
     //Isolate Index bits by subtracting off Tag and then shifting
-    ai.setIndex = (address - (ai.tag << (ci.numByteOffsetBits + ci.numSetIndexBits))) >> ci.numByteOffsetBits; 
+    ai.setIndex = (address - (ai.tag << this->ci.numByteOffsetBits << this->ci.numSetIndexBits)) >> this->ci.numByteOffsetBits; 
+
+    //ai.setIndex = (address >> ci.numByteOffsetBits) && ci.numSetIndexBits; 
 
 	return ai;
 }
