@@ -1,5 +1,5 @@
 L 0,4 246 L1 miss 
-L 1f,1 13 L1 hit
+L 1f,1 13 L1 hit 
 L 100,1 246 L1 miss 
 S 200,1 259 L1 miss 
 L 300,8 246 L1 miss eviction

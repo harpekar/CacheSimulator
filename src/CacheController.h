@@ -8,7 +8,7 @@
 #define _CACHECONTROLLER_H_
 
 #include "CacheStuff.h"
-#include "CacheMod.h"
+//#include "CacheMod.h"
 #include "BlockEntry.h"
 #include <string>
 #include <fstream>
@@ -22,10 +22,10 @@ class CacheController {
 		};
 		
         
-        unsigned int globalCycles;
-		unsigned int globalHits;
-		unsigned int globalMisses;
-		unsigned int globalEvictions;
+        unsigned int cycles;
+		unsigned int hits;
+		unsigned int misses;
+		unsigned int evictions;
 
         unsigned int globalRead;
         unsigned int globalWrite;
@@ -36,10 +36,16 @@ class CacheController {
         std::vector<std::list<BlockEntry>> programCache;
         //std::list<CacheBlock> 
 
-		CacheInfo ci;
+        unsigned int level;
+
+        unsigned int writeCycles();
 
 		// function to allow read or write access to the cache
 		void cacheAccess(CacheResponse*, bool, unsigned long int, int);
+
+        void writeToCache(CacheResponse*, unsigned long int, unsigned long int, int);
+        void readFromCache(CacheResponse*, unsigned long int, unsigned long int, int);
+
 		// function that can compute the index and tag matching a specific address
 		AddressInfo getAddressInfo(unsigned long int);
 		// function to add entry into output file
@@ -47,8 +53,11 @@ class CacheController {
 		
 
 	public:
-		CacheController(CacheInfo, std::string);
+		CacheController(int, CacheInfo, std::string);
 		void runTracefile();
+
+		CacheInfo ci;
+        CacheController *nextCache;
 };
 
 #endif //CACHECONTROLLER

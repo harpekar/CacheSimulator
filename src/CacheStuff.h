@@ -19,6 +19,9 @@ enum class WritePolicy {
 
 // structure to hold information about a particular cache
 struct CacheInfo {
+
+    unsigned int numCacheLevels;
+
 	unsigned int numByteOffsetBits;
 	unsigned int numSetIndexBits;
 	unsigned int numberSets; // how many sets are in the cache

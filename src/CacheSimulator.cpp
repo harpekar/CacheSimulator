@@ -10,11 +10,12 @@
 
 #include <iostream>
 #include <fstream>
-#include <thread>
 
 #include <stdio.h>      /* printf, NULL */
 #include <stdlib.h>     /* srand, rand */
 #include <time.h>       /* time */
+
+#include <list>
 
 using namespace std;
 
@@ -23,8 +24,8 @@ using namespace std;
 	Accepts core ID number, configuration info, and the name of the tracefile to read.
 */
 void initializeCache(int id, CacheInfo config, string tracefile) {
-	CacheController singlecore = CacheController(config, tracefile);
-	singlecore.runTracefile();
+	CacheController singlecore = CacheController(id, config, tracefile);
+	//singlecore.runTracefile();
 }
 
 /*
@@ -33,20 +34,28 @@ void initializeCache(int id, CacheInfo config, string tracefile) {
 */
 int main(int argc, char* argv[]) {
 	CacheInfo config;
+
+    std::vector<CacheController> cacheLevels;
+
 	if (argc < 3) {
 		cerr << "You need two command line arguments. You should provide a configuration file and a trace file." << endl;
 		return 1;
 	}
 
-	// determine how many cache levels the system is using
-	unsigned int numCacheLevels;
+	string tracefile(argv[2]);
+	
+    // determine how many cache levels the system is using
+	//unsigned int numCacheLevels;
 
 	// read the configuration file
 	cout << "Reading config file: " << argv[1] << endl;
 	ifstream infile(argv[1]);
 	unsigned int tmp;
-	infile >> numCacheLevels;
-	infile >> config.memoryAccessCycles;
+	infile >> config.numCacheLevels;
+    infile >> config.memoryAccessCycles;
+    
+    for (unsigned int i = 0; i < config.numCacheLevels; i++) {
+
 	infile >> config.numberSets;
 	infile >> config.blockSize;
 	infile >> config.associativity;
@@ -55,13 +64,37 @@ int main(int argc, char* argv[]) {
 	infile >> tmp;
 	config.wp = static_cast<WritePolicy>(tmp);
 	infile >> config.cacheAccessCycles;
+
+    CacheController cache = CacheController((i+1), config, tracefile);
+
+    //cout << cache.ci.numberSets << endl;
+
+    cacheLevels.push_back(cache);
+    
+    }
+
+    //MultiCache caches = cacheLevels;
+
+    for (unsigned int u = 0; u < cacheLevels.size(); u++) {
+
+        if (u == cacheLevels.size()) {
+
+            cacheLevels[u].nextCache = NULL;
+        
+        }
+
+        else { 
+            cacheLevels[u].nextCache = &(cacheLevels[u+1]);
+        }
+    }
+
 	infile.close();
 
     srand (time(NULL)); // Seed for random block access
 	
 	// Examples of how you can access the configuration file information
-	cout << "System has " << numCacheLevels << " cache(s)." << endl;
-	cout << config.numberSets << " sets with " << config.blockSize << " bytes in each block. N = " << config.associativity << endl;
+	cout << "System has " << config.numCacheLevels << " cache(s)." << endl;
+	cout << cacheLevels[0].ci.numberSets << " sets with " << cacheLevels[0].ci.blockSize << " bytes in each block. N = " << config.associativity << endl;
 
 	if (config.rp == ReplacementPolicy::Random)
 		cout << "Using random replacement protocol" << endl;
@@ -74,8 +107,8 @@ int main(int argc, char* argv[]) {
 		cout << "Using write-back policy" << endl;
 
 	// start the cache operation...
-	string tracefile(argv[2]);
-	initializeCache(0, config, tracefile);
+
+    cacheLevels[0].runTracefile();
 
 	return 0;
 }
