@@ -6,12 +6,15 @@
 
 #include <iostream>
 #include <list>
+#include <math.h>
 
 #include "CacheController.h"
 #include "CacheSimulator.h"
 #include "CacheMod.h"
 
 void writeToCache(std::list<BlockEntry>& CacheEntry, unsigned long int tag, CacheInfo config, CacheResponse* response){
+    
+int numAddnAccess = int((ceil(config.blockSize - 8)/8)); 
 
 //No matter what, we have to access the cache    
 response->cycles += config.cacheAccessCycles;
@@ -28,7 +31,7 @@ for (block = CacheEntry.begin(); block != CacheEntry.end(); block++) {
         std::cout << "A Hit" << std::endl;
 
         if (config.wp == WritePolicy::WriteThrough) {
-            response->cycles += config.memoryAccessCycles;
+            response->cycles += config.memoryAccessCycles + numAddnAccess;
         }
         else {
             CacheEntry.front().dirtyBit = true;
@@ -45,7 +48,7 @@ for (block = CacheEntry.begin(); block != CacheEntry.end(); block++) {
 BlockEntry requBlock {false,true,tag};
 
 if (config.wp == WritePolicy::WriteThrough)
-    response->cycles += config.memoryAccessCycles;
+    response->cycles += config.memoryAccessCycles + numAddnAccess;
 
 //If this line of the cache is full, it must be an eviction
  
@@ -53,7 +56,7 @@ if (CacheEntry.size() == config.associativity) {
 
     if ((config.wp == WritePolicy::WriteBack) && (CacheEntry.back().dirtyBit == true)) {
         std::cout << "Writing back" << std::endl; 
-        response->cycles += config.memoryAccessCycles;
+        response->cycles += config.memoryAccessCycles + numAddnAccess;
     }
 
     if (config.rp == ReplacementPolicy::LRU) {
@@ -85,7 +88,8 @@ std::cout << "A Miss" << std::endl;
 //Must update main memory after write is completed
 //if (config.wp == WritePolicy::WriteThrough) { 
 
-response->cycles += (config.memoryAccessCycles + config.cacheAccessCycles);
+
+response->cycles += (config.memoryAccessCycles + config.cacheAccessCycles + numAddnAccess);
 
 //}
 
@@ -96,7 +100,8 @@ return;
 
 void readFromCache(std::list<BlockEntry>& CacheEntry, unsigned long int tag, CacheInfo config, CacheResponse* response) {
 
-    
+int numAddnAccess = int((ceil(config.blockSize - 8)/8)); 
+
 //No matter what, we have to access the cache    
 response->cycles += config.cacheAccessCycles;
 
@@ -125,7 +130,7 @@ for (block = CacheEntry.begin(); block != CacheEntry.end(); block++) {
 if (CacheEntry.size() == config.associativity) {
 
     if ((config.wp == WritePolicy::WriteBack) && (CacheEntry.back().dirtyBit == true)) 
-        response->cycles += config.memoryAccessCycles;
+        response->cycles += config.memoryAccessCycles + numAddnAccess;
 
     if (config.rp == ReplacementPolicy::LRU)
         CacheEntry.pop_back();
@@ -148,8 +153,9 @@ if (CacheEntry.size() == config.associativity) {
 
 BlockEntry requBlock {false,true,tag};
 
-//if (config.wp == WritePolicy::WriteThrough)
-response->cycles += config.memoryAccessCycles;
+//Determine if the main memory will have to be accessed more than once 
+
+response->cycles += config.memoryAccessCycles + numAddnAccess;
 
 CacheEntry.push_front(requBlock);
 response->misses += 1;
