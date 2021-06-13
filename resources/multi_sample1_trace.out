@@ -1,26 +1,26 @@
-L 0,4 286 L1 miss 
-L 80,8 286 L1 miss 
-L 10,4 286 L1 miss 
-L 102,6 286 L1 miss 
+L 0,4 286 L1 miss  L2 miss 
+L 80,8 286 L1 miss  L2 miss 
+L 10,4 53 L1 miss  L2 hit 
+L 102,6 286 L1 miss  L2 miss 
 L 2,6 13 L1 hit 
-S 180,5 488 L1 miss eviction
+S 180,5 353 L1 miss eviction L2 miss 
 L 100,2 13 L1 hit 
-L 4,20 13 L1 hit 
+L 4,20 26 L1 hit 
 L 100,2 13 L1 hit 
-L 80,8 53 L1 miss hit eviction
-M 180,6 286 L1 miss eviction
-M 180,6 244 L1 hit 
-L 100,8 13 L1 hit 
-S 100,5 244 L1 hit 
-S 180,8 244 L1 hit 
 L 80,8 13 L1 hit 
-M 0,8 286 L1 miss eviction
-M 0,8 244 L1 hit 
+M 180,6 13 L1 hit 
+M 180,6 286 L1 hit  L2 hit 
+L 100,8 13 L1 hit 
+S 100,5 286 L1 hit  L2 hit 
+S 180,8 286 L1 hit  L2 hit 
+L 80,8 13 L1 hit 
+M 0,8 13 L1 hit 
+M 0,8 286 L1 hit  L2 hit 
 M 0,4 13 L1 hit 
-M 0,4 244 L1 hit 
-L 280,4 286 L1 miss eviction
+M 0,4 286 L1 hit  L2 hit 
+L 280,4 286 L1 miss eviction L2 miss 
 M 80,8 13 L1 hit 
-M 80,8 244 L1 hit 
-L1 Cache: Hits:15 Misses:16 Evictions:8
-L2 Cache: Hits:15 Misses:16 Evictions:8
-Cycles:4111 Reads:16 Writes:7
+M 80,8 286 L1 hit  L2 hit 
+L1 Cache: Hits:18 Misses:6 Evictions:2
+L2 Cache: Hits:18 Misses:6 Evictions:2
+Cycles:339 Reads:16 Writes:7

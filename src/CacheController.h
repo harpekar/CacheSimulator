@@ -33,10 +33,9 @@ class CacheController {
 		std::string inputFile, outputFile;
 
         //Add vector of Cache Blocks for cache system
-        std::vector<std::list<BlockEntry>> programCache;
         //std::list<CacheBlock> 
 
-        unsigned int level;
+        //std::vector<CacheController> *caches;
 
         unsigned int writeCycles();
 
@@ -46,6 +45,9 @@ class CacheController {
         void writeToCache(CacheResponse*, unsigned long int, unsigned long int, int);
         void readFromCache(CacheResponse*, unsigned long int, unsigned long int, int);
 
+        void evictTo(unsigned long int, unsigned long int);
+        void addTo(unsigned long int, unsigned long int);
+
 		// function that can compute the index and tag matching a specific address
 		AddressInfo getAddressInfo(unsigned long int);
 		// function to add entry into output file
@@ -53,9 +55,13 @@ class CacheController {
 		
 
 	public:
-		CacheController(int, CacheInfo, std::string);
+		
+        std::vector<std::list<BlockEntry>> programCache;
+
+        CacheController(int, CacheInfo, std::string);
 		void runTracefile();
 
+        unsigned int level;
 		CacheInfo ci;
         CacheController *nextCache;
 };
