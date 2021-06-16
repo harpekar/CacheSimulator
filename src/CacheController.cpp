@@ -59,32 +59,7 @@ CacheController::CacheController(int id, CacheInfo ci, string tracefile) {
     }
 
     this->programCache = programCache;
-
-    //this->nextCache = new CacheController;// (struct CacheController*)malloc(sizeof(struct CacheController));
 }
-
-
-
-/*unsigned int CacheController::writeCycles(){
-
-    int cycles = 0;
-
-    CacheController *cache = this;
-
-    while(cache->nextCache != NULL) {
-
-        cycles += cache->ci.cacheAccessCycles;
-
-        cache = cache->nextCache;
-        
-    }
-
-    cout << "block" << cache->ci.blockSize << endl;
-
-    //If main memory needs more than one read cycle
-
-    return cycles;
-}*/
 
 void CacheController::writeToCache(CacheResponse* responses, unsigned long int address, int numBytes){
 
@@ -158,12 +133,6 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
 cout << "Not a hit" << endl;
 
 BlockEntry requBlock {false,true,address};
-
-//if (ci.wp == WritePolicy::WriteThrough)
-//    responses[(level-1)].cycles += writeCycles();
-
-
-//cout << "Still nota hit" << endl;
 
 //If this line of the cache is full, it must be an eviction
  
@@ -539,13 +508,13 @@ void CacheController::cacheAccess(CacheResponse *responses, bool isWrite, unsign
 
     //}
 
-    hits += responses[(level-1)].hits;
+    //hits += responses[(level-1)].hits;
 
-    misses += responses[(level-1)].misses;
+    //misses += responses[(level-1)].misses;
     
-    evictions += responses[(level-1)].evictions; 
+    //evictions += responses[(level-1)].evictions; 
 
-    cycles += responses[(level-1)].cycles; 
+    //cycles += responses[(level-1)].cycles; 
 
 	if (responses[(level-1)].hits > 0)
 		cout << "Operation at address " << std::hex << address << " caused " << responses[(level-1)].hits << " hit(s)." << std::dec << endl;
@@ -672,7 +641,7 @@ void CacheController::logEntry(ofstream& outfile, CacheResponse* responses) {
 
     int lineCycles = responses[0].cycles + responses[1].cycles + responses[2].cycles; 
 
-    this->cycles += (responses[1].cycles + responses[2].cycles);
+    this->cycles += lineCycles;
 
     CacheController *cache = this;
 
@@ -683,17 +652,17 @@ void CacheController::logEntry(ofstream& outfile, CacheResponse* responses) {
            break; 
 	
     outfile << " L" << (i+1) << " ";	
-	if (responses[i].misses > 0)
+	if (responses[i].misses > 0) {
 		outfile << "miss ";
-        cache->misses++;
+        cache->misses++;}
 
-    if (responses[i].hits > 0)
+    if (responses[i].hits > 0) {
 		outfile << "hit ";
-	    cache->hits++;
+	    cache->hits++;}
 
-    if (responses[i].evictions > 0)
+    if (responses[i].evictions > 0) {
 		outfile << "eviction";
-        cache->evictions++;
+        cache->evictions++;}
 
     cache = cache->nextCache;
  

@@ -23,10 +23,10 @@ using namespace std;
 	This function creates the cache and starts the simulator.
 	Accepts core ID number, configuration info, and the name of the tracefile to read.
 */
-void initializeCache(int id, CacheInfo config, string tracefile) {
+//void initializeCache(int id, CacheInfo config, string tracefile) {
 	//CacheController singlecore = CacheController(id, config, tracefile);
 	//singlecore.runTracefile();
-}
+//}
 
 /*
 	This function accepts a configuration file and a trace file on the command line.
@@ -58,28 +58,31 @@ int main(int argc, char* argv[]) {
     
     for (unsigned int i = 0; i < numCacheLevels; i++) {
     
-	CacheInfo config;
+	    CacheInfo config;
 
-    config.numCacheLevels = numCacheLevels;
-    config.memoryAccessCycles = memoryAccessCycles;
+        config.numCacheLevels = numCacheLevels;
+        config.memoryAccessCycles = memoryAccessCycles;
 
-	infile >> config.numberSets;
+	    infile >> config.numberSets;
 
-    //cout << config.numberSets << endl;
+        //cout << config.numberSets << endl;
 
-	infile >> config.blockSize;
-	infile >> config.associativity;
-	infile >> tmp;
-	config.rp = static_cast<ReplacementPolicy>(tmp);
-	infile >> tmp;
-	config.wp = static_cast<WritePolicy>(tmp);
-	infile >> config.cacheAccessCycles;
+	    infile >> config.blockSize;
+	    infile >> config.associativity;
+	    infile >> tmp;
+	    config.rp = static_cast<ReplacementPolicy>(tmp);
+	    infile >> tmp;
+	    config.wp = static_cast<WritePolicy>(tmp);
+	    infile >> config.cacheAccessCycles;
 
-    CacheController cache = CacheController((i+1), config, tracefile);
+        CacheController cache = CacheController((i+1), config, tracefile);
 
-    //cout << cache.ci.numberSets << endl;
+        //cache.hits = 0;
 
-    cacheLevels.push_back(cache);
+        //cout << cache.ci.numberSets << endl;
+
+        cacheLevels.push_back(cache);
+        
     }
 
     for(unsigned int i = 0; i < (numCacheLevels - 1); i++) {

@@ -21,6 +21,6 @@ M 0,4 286 L1 hit  L2 hit
 L 280,4 286 L1 miss eviction L2 miss 
 M 80,8 13 L1 hit 
 M 80,8 286 L1 hit  L2 hit 
-L1 Cache: Hits:38 Misses:32 Evictions:28
-L2 Cache: Hits:15 Misses:15 Evictions:15
+L1 Cache: Hits:14 Misses:9 Evictions:5
+L2 Cache: Hits:11 Misses:5 Evictions:0
 Cycles:3761 Reads:16 Writes:7
