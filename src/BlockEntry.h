@@ -17,7 +17,8 @@ class BlockEntry {
     public:    
         bool dirtyBit;
         bool validBit;
-        unsigned long int tagBits;
+        //unsigned long int tagBits;
+        unsigned long int address;
 };
 
 

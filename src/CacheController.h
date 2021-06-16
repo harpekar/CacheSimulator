@@ -42,11 +42,11 @@ class CacheController {
 		// function to allow read or write access to the cache
 		void cacheAccess(CacheResponse*, bool, unsigned long int, int);
 
-        void writeToCache(CacheResponse*, unsigned long int, unsigned long int, int);
-        void readFromCache(CacheResponse*, unsigned long int, unsigned long int, int);
+        void writeToCache(CacheResponse*, unsigned long int, int);
+        void readFromCache(CacheResponse*, unsigned long int, int);
 
-        void evictTo(unsigned long int, unsigned long int);
-        void addTo(unsigned long int, unsigned long int);
+        void evictTo(unsigned long int);
+        void addTo(unsigned long int);
 
 		// function that can compute the index and tag matching a specific address
 		AddressInfo getAddressInfo(unsigned long int);
