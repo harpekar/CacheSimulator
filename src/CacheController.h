@@ -37,7 +37,7 @@ class CacheController {
 
         //std::vector<CacheController> *caches;
 
-        unsigned int writeCycles();
+        //unsigned int writeCycles();
 
 		// function to allow read or write access to the cache
 		void cacheAccess(CacheResponse*, bool, unsigned long int, int);

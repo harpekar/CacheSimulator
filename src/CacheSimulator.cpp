@@ -96,11 +96,7 @@ int main(int argc, char* argv[]) {
 	
 	// Examples of how you can access the configuration file information
 	cout << "System has " << numCacheLevels << " cache(s)." << endl;
-	cout << cacheLevels[0].ci.numberSets << " sets with " << cacheLevels[0].ci.blockSize << " bytes in each block. N = " << cacheLevels[0].ci.associativity << endl;
-
-	cout << cacheLevels[1].ci.numberSets << " sets with " << cacheLevels[1].ci.blockSize << " bytes in each block. N = " << cacheLevels[1].ci.associativity << endl;
-
-    cout << cacheLevels[0].nextCache->programCache[0].size() << "it's 0" << endl;
+	//cout << cacheLevels[0].ci.numberSets << " sets with " << cacheLevels[0].ci.blockSize << " bytes in each block. N = " << cacheLevels[0].ci.associativity << endl;
 
     if (cacheLevels[0].ci.rp == ReplacementPolicy::Random)
 		cout << "Using random replacement protocol" << endl;
