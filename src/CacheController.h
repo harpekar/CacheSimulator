@@ -45,8 +45,8 @@ class CacheController {
         void writeToCache(CacheResponse*, unsigned long int, int);
         void readFromCache(CacheResponse*, unsigned long int, int);
 
-        void evictTo(unsigned long int);
-        void addTo(unsigned long int);
+        void evictTo(BlockEntry);
+        void addTo(BlockEntry);
 
 		// function that can compute the index and tag matching a specific address
 		AddressInfo getAddressInfo(unsigned long int);

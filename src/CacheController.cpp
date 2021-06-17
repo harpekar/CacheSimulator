@@ -67,20 +67,18 @@ AddressInfo ai = getAddressInfo(address);
 
 cout << "\tSet index: " << ai.setIndex << ", tag: " << ai.tag << endl;
 
-cout << (this->ci.blockSize - 8) << endl;
-
-//std::list<BlockEntry> CacheEntry = programCache.at(ai.setIndex);
-
 int numAddnAccess = int((ceil(this->ci.blockSize - 8)/8));
-
-//cout << "numaddnaccess is " << numAddnAccess << endl;
 
 //No matter what, we have to access the cache    
 responses[(level-1)].cycles += ci.cacheAccessCycles;
 
 std::list<BlockEntry>::iterator block;
 
-cout << "Size is " << programCache.at(ai.setIndex).size() << endl; 
+//cout << "Size is " << programCache.at(ai.setIndex).size() << endl;
+
+cout << "blocksize is " << this->ci.blockSize << endl;
+
+cout << "numbytes is " << numBytes << endl;
 
 for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.setIndex).end(); block++) {
 
@@ -98,9 +96,10 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
 
             //CacheController *cache = this->nextCache;
 
-            cout << "stuff" << endl;
+            cout << "writing through" << endl;
 
-            if (this->level < this->ci.numCacheLevels) { 
+            if (this->level < this->ci.numCacheLevels) {
+                //responses[(level-1)].cycles += ci.cacheAccessCycles; 
                 this->nextCache->writeToCache(responses, address, numBytes);
             }
 
@@ -113,19 +112,25 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
         else {
             programCache.at(ai.setIndex).front().dirtyBit = true;
         }
-
-        AddressInfo end = getAddressInfo(address + numBytes);
         
-        if (end.setIndex != ai.setIndex) {
+        int overflow = numBytes - ci.blockSize;
 
-            cout << " Writing" << endl;
+        cout << "overflow is " << overflow << endl;
+
+        if (overflow > 0) {
+
+            cout << " Writing to overflow" << endl;
 
             int nextAddr = address + (1 << this->ci.numByteOffsetBits);
-            writeToCache(responses, nextAddr, (numBytes-ci.blockSize));
+            writeToCache(responses, nextAddr, overflow);
         }
-        
-        return;
+
+
+    return;
+
     }
+
+
 }
 
 //If it is not a hit, it is either a miss (and addition) or an eviction. 
@@ -138,11 +143,11 @@ BlockEntry requBlock {false,true,address};
  
 if (programCache.at(ai.setIndex).size() == ci.associativity) {
 
-    unsigned int evictAddr;
+    BlockEntry evicted;
 
     if (ci.rp == ReplacementPolicy::LRU) {
 
-        evictAddr = programCache.at(ai.setIndex).back().address;
+        evicted = programCache.at(ai.setIndex).back();
 
         programCache.at(ai.setIndex).pop_back();
     }
@@ -152,26 +157,24 @@ if (programCache.at(ai.setIndex).size() == ci.associativity) {
         block = programCache.at(ai.setIndex).begin();
         advance(block, random);   
 
-        evictAddr = (*block).address;
+        evicted = (*block);
 
         programCache.at(ai.setIndex).erase(block);
 
     }
 
-    //cout << evictAddr << endl;
-
-    AddressInfo evict = getAddressInfo(evictAddr);
+    AddressInfo evict = getAddressInfo(evicted.address);
 
     cout << "Evicting index" << evict.setIndex << " tag " << evict.tag << endl; 
 
     if ((this->level) == this->ci.numCacheLevels) {
-        if ((this->ci.wp == WritePolicy::WriteBack) && (programCache.at(ai.setIndex).back().dirtyBit == true)) {
+        if ((this->ci.wp == WritePolicy::WriteBack) && (evicted.dirtyBit == true)) {
             responses[(level-1)].cycles += this->ci.memoryAccessCycles + numAddnAccess;
         }
     }
     else {
         //responses[(level-1)].cycles += this->nextCache->ci.cacheAccessCycles;
-        this->nextCache->evictTo(evictAddr);
+        this->nextCache->evictTo(evicted);
     }
 
 
@@ -193,18 +196,27 @@ std::cout << "A Miss" << std::endl;
 
 //Write-through
 
-//If a lower-level cache, 
-
 if (((this->level) != 1) && (this->ci.wp == WritePolicy::WriteThrough)) { 
 
-    this->writeToCache(responses, address, numBytes);
+    //Always a hit if there was a previous miss on the same operation
+    responses[(level-1)].hits += 1;
+
+    //responses[(level-1)].cycles += ci.cacheAccessCycles;
+
 }
 
-if (((this->level) != this->ci.numCacheLevels) && (this->ci.wp == WritePolicy::WriteThrough)) {
+cout << this->level << endl;
+
+
+if (this->ci.wp == WritePolicy::WriteThrough) {
+
+responses[(level-1)].cycles += ci.cacheAccessCycles;
+
+if ((this->level) < this->ci.numCacheLevels) {
 
     cout << "Write to next cache" << endl;
 
-    responses[(level-1)].cycles += ci.cacheAccessCycles; 
+    //responses[(level-1)].cycles += ci.cacheAccessCycles; 
 
     this->nextCache->writeToCache(responses, address, numBytes); 
 
@@ -213,24 +225,24 @@ if (((this->level) != this->ci.numCacheLevels) && (this->ci.wp == WritePolicy::W
 
 else {
     cout << "Accessing main memory" << endl;
-    responses[(level-1)].cycles += ci.memoryAccessCycles + numAddnAccess; // ci.cacheAccessCycles + numAddnAccess;
+    responses[(level-1)].cycles += (ci.memoryAccessCycles + numAddnAccess);
+
+    //responses[(level-1)].cycles += ci.cacheAccessCycles;
+    responses[(level-1)].cycles += (ci.memoryAccessCycles + numAddnAccess);
+
+//responses[(level-1)].cycles += ci.cacheAccessCycles;
 }
 
-//Must update main memory after write is completed
-//if ((config.wp == WritePolicy::WriteThrough) && (this->level  ) { 
+}
 
-AddressInfo end = getAddressInfo(address + numBytes);
+int overflow = numBytes - ci.blockSize;
 
-if (end.setIndex != ai.setIndex) { 
+if (overflow > 0) { 
 
     int nextAddr = address + (1 << this->ci.numByteOffsetBits);
 
-    writeToCache(responses, nextAddr, (numBytes-ci.blockSize));
+    writeToCache(responses, nextAddr, overflow);
 }
-
-
-//responses[level].cycles += (ci.memoryAccessCycles + ci.cacheAccessCycles + numAddnAccess);
-
 
 return;
 
@@ -244,8 +256,6 @@ cout << "Reading" << endl;
 AddressInfo ai = getAddressInfo(address);
 
 cout << "\tSet index: " << ai.setIndex << ", tag: " << ai.tag << endl;
-
-//std::list<BlockEntry> CacheEntry = programCache.at(ai.setIndex);
 
 int numAddnAccess = int((ceil(this->ci.blockSize - 8)/8)); 
 
@@ -280,10 +290,16 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
         //cout << programCache.at(ai.setIndex).size() << endl;
         
         std::cout << "A hit at index " << ai.setIndex << " tag " << ai.tag  << std::endl;
-      
+
+        cout << "numbytes is " << numBytes << endl;
+
         AddressInfo end = getAddressInfo(address + numBytes);
 
-        if (end.setIndex != ai.setIndex) { 
+        cout << "End addr is index" << end.setIndex << " tag " << end.tag << endl;
+
+        int overflow = numBytes - ci.blockSize;
+
+        if (overflow > 0) { 
 
             cout << "Reading again" << endl;
 
@@ -304,13 +320,11 @@ cout << "size at index is " << programCache.at(ai.setIndex).size() << endl;
  
 if (programCache.at(ai.setIndex).size() == this->ci.associativity) {
 
-    unsigned int evictAddr;
+    BlockEntry evicted;
 
     if (ci.rp == ReplacementPolicy::LRU){
 
-        evictAddr = programCache.at(ai.setIndex).back().address;
-
-        cout << evictAddr << endl;
+        evicted = programCache.at(ai.setIndex).back();
 
         programCache.at(ai.setIndex).pop_back();
     }
@@ -320,25 +334,25 @@ if (programCache.at(ai.setIndex).size() == this->ci.associativity) {
         block = programCache.at(ai.setIndex).begin();
         advance(block, random);   
 
-        evictAddr = (*block).address;
+        evicted = (*block);
         //evictAddr = programCache.at(ai.setIndex).at
 
         programCache.at(ai.setIndex).erase(block);
     }
 
     if ((this->level) == this->ci.numCacheLevels) {
-        if ((this->ci.wp == WritePolicy::WriteBack) && (programCache.at(ai.setIndex).back().dirtyBit == true)) {
+        if ((this->ci.wp == WritePolicy::WriteBack) && (evicted.dirtyBit == true)) {
             responses[(level-1)].cycles += this->ci.memoryAccessCycles + numAddnAccess;
         }
     }
     else {
         //responses[(level-1)].cycles += this->nextCache->ci.cacheAccessCycles;
-        this->nextCache->evictTo(evictAddr);
+        this->nextCache->evictTo(evicted);
     }
     
     responses[(level-1)].evictions += 1;
 
-    AddressInfo evict = getAddressInfo(evictAddr);
+    AddressInfo evict = getAddressInfo(evicted.address);
 
     cout << "Evicting index" << evict.setIndex << " tag " << evict.tag << endl; 
 }
@@ -362,14 +376,18 @@ std::cout << "A miss" << std::endl;
 
 //cout << (numBytes - signed(this->ci.blockSize)) << endl;
 
-AddressInfo end = getAddressInfo(address + numBytes);
+//AddressInfo end = getAddressInfo(address + numBytes);
 
-if (end.setIndex != ai.setIndex) { 
+int overflow = numBytes - ci.blockSize;
+
+cout << "overflow is " << overflow << endl;
+
+if (overflow > 0) { 
     cout << "Reading more blocks" << endl;   
 
     int nextAddr = address + (1 << this->ci.numByteOffsetBits);
 
-    readFromCache(responses, nextAddr, (numBytes-ci.blockSize));
+    readFromCache(responses, nextAddr, overflow);
 }
 
 if ((this->level) < (this->ci.numCacheLevels)) {
@@ -382,14 +400,6 @@ if ((this->level) < (this->ci.numCacheLevels)) {
 else {
     cout << "Accessing main memory" << endl;
     responses[(level-1)].cycles += ci.memoryAccessCycles + numAddnAccess;
-
-    //int start = index - (index % 8);
-
-
-    cout << "numbytes is" << numBytes << endl;
-
-    //int num = int(ceil(numBytes/8));
-
 }
 
 
@@ -398,12 +408,14 @@ return;
 }
 
 
-void CacheController::addTo(unsigned long int address) { 
+void CacheController::addTo(BlockEntry evicted) { 
 
-    AddressInfo ai = getAddressInfo(address);
+    AddressInfo ai = getAddressInfo(evicted.address);
 
-    BlockEntry block {false, true, address};
-   
+    BlockEntry block = evicted;// {false, true, address};
+  
+    block.dirtyBit = false;
+
     cout << "Adding to " << this->level << " tag is " << ai.tag << " index is " << ai.setIndex << endl;
 
     cout << programCache.at(ai.setIndex).size() << endl;
@@ -414,7 +426,7 @@ void CacheController::addTo(unsigned long int address) {
 
         if ((level) < ci.numCacheLevels) {
 
-            this->nextCache->evictTo(address);
+            this->nextCache->evictTo(block);
 
         }
         
@@ -429,9 +441,9 @@ void CacheController::addTo(unsigned long int address) {
 
 }
 
-void CacheController::evictTo(unsigned long int address) {
+void CacheController::evictTo(BlockEntry evicted) {
 
-    AddressInfo ai = getAddressInfo(address);
+    AddressInfo ai = getAddressInfo(evicted.address);
 
     cout << "Evicting" << endl;
 
@@ -443,7 +455,7 @@ void CacheController::evictTo(unsigned long int address) {
 
     for (block = this->programCache.at(ai.setIndex).begin(); block != this->programCache.at(ai.setIndex).end(); block++) {
 
-        if ((*block).address == address) {
+        if ((*block).address == evicted.address) {
 
             return;
 
@@ -458,7 +470,7 @@ void CacheController::evictTo(unsigned long int address) {
         cout << ci.numCacheLevels << endl;
 
         if (level < ci.numCacheLevels) {    
-            this->nextCache->evictTo(address);
+            this->nextCache->evictTo(evicted);
 
         }
     }
@@ -467,7 +479,7 @@ void CacheController::evictTo(unsigned long int address) {
        
         cout << "adding" << endl;
 
-        this->addTo(address);
+        this->addTo(evicted);
 
     }
 
@@ -508,13 +520,6 @@ void CacheController::cacheAccess(CacheResponse *responses, bool isWrite, unsign
 
     //}
 
-    //hits += responses[(level-1)].hits;
-
-    //misses += responses[(level-1)].misses;
-    
-    //evictions += responses[(level-1)].evictions; 
-
-    //cycles += responses[(level-1)].cycles; 
 
 	if (responses[(level-1)].hits > 0)
 		cout << "Operation at address " << std::hex << address << " caused " << responses[(level-1)].hits << " hit(s)." << std::dec << endl;
@@ -645,24 +650,27 @@ void CacheController::logEntry(ofstream& outfile, CacheResponse* responses) {
 
     CacheController *cache = this;
 
-    outfile << " " << (lineCycles); 
+    outfile << " " << (lineCycles) << " "; 
     for (unsigned int i = 0; i < ci.numCacheLevels; i++) {
 
     if ((responses[i].misses == 0) && (responses[i].hits == 0) && (responses[i].evictions == 0))
            break; 
 	
-    outfile << " L" << (i+1) << " ";	
+    outfile << "L" << (i+1) << " ";	
 	if (responses[i].misses > 0) {
 		outfile << "miss ";
-        cache->misses++;}
+        cache->misses += responses[i].misses;
+    }
 
     if (responses[i].hits > 0) {
 		outfile << "hit ";
-	    cache->hits++;}
+	    cache->hits += responses[i].hits;
+    }
 
     if (responses[i].evictions > 0) {
-		outfile << "eviction";
-        cache->evictions++;}
+		outfile << "eviction ";
+        cache->evictions += responses[i].evictions;
+    }
 
     cache = cache->nextCache;
  
