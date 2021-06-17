@@ -208,7 +208,7 @@ if (((this->level) != 1) && (this->ci.wp == WritePolicy::WriteThrough)) {
 cout << this->level << endl;
 
 
-if (this->ci.wp == WritePolicy::WriteThrough) {
+//if (this->ci.wp == WritePolicy::WriteThrough) {
 
 responses[(level-1)].cycles += ci.cacheAccessCycles;
 
@@ -228,18 +228,19 @@ else {
     responses[(level-1)].cycles += (ci.memoryAccessCycles + numAddnAccess);
 
     //responses[(level-1)].cycles += ci.cacheAccessCycles;
-    responses[(level-1)].cycles += (ci.memoryAccessCycles + numAddnAccess);
 
-//responses[(level-1)].cycles += ci.cacheAccessCycles;
+    if (this->ci.wp == WritePolicy::WriteThrough) {
+
+        responses[(level-1)].cycles += (ci.memoryAccessCycles + numAddnAccess);
+
+    }
 }
 
-}
+//else {
 
-else {
+//    responses[(level-1)].cycles += (ci.cacheAccessCycles + ci.memoryAccessCycles + numAddnAccess);
 
-    responses[(level-1)].cycles += (ci.cacheAccessCycles + ci.memoryAccessCycles + numAddnAccess);
-
-}
+//}
 
 int overflow = numBytes - ci.blockSize;
 
