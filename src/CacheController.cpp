@@ -235,6 +235,12 @@ else {
 
 }
 
+else {
+
+    responses[(level-1)].cycles += (ci.cacheAccessCycles + ci.memoryAccessCycles + numAddnAccess);
+
+}
+
 int overflow = numBytes - ci.blockSize;
 
 if (overflow > 0) { 
