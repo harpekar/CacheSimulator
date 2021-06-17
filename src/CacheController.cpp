@@ -69,7 +69,8 @@ cout << "\tSet index: " << ai.setIndex << ", tag: " << ai.tag << endl;
 
 int numAddnAccess = int((ceil(this->ci.blockSize - 8)/8));
 
-//No matter what, we have to access the cache    
+//No matter what, we have to access the cache  
+
 responses[(level-1)].cycles += ci.cacheAccessCycles;
 
 std::list<BlockEntry>::iterator block;
@@ -99,7 +100,7 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
             cout << "writing through" << endl;
 
             if (this->level < this->ci.numCacheLevels) {
-                //responses[(level-1)].cycles += ci.cacheAccessCycles; 
+                //responses[(level)].cycles += this->nextCache->ci.cacheAccessCycles; 
                 this->nextCache->writeToCache(responses, address, numBytes);
             }
 
@@ -194,29 +195,38 @@ responses[(level-1)].misses += 1;
 
 std::cout << "A Miss" << std::endl;
 
+
 //Write-through
 
-if (((this->level) != 1) && (this->ci.wp == WritePolicy::WriteThrough)) { 
+if (((this->level) != 1)) {
+    
+    if (this->ci.wp == WritePolicy::WriteThrough) { 
 
     //Always a hit if there was a previous miss on the same operation
     responses[(level-1)].hits += 1;
 
+    cout << "Already been here" << endl;
+    }
     //responses[(level-1)].cycles += ci.cacheAccessCycles;
+}
 
+
+else { 
+
+    //If cache is L1, ensure cycles for probing and writing are counted
+
+    responses[(level-1)].cycles += this->ci.cacheAccessCycles;
 }
 
 cout << this->level << endl;
 
-
-//if (this->ci.wp == WritePolicy::WriteThrough) {
-
-responses[(level-1)].cycles += ci.cacheAccessCycles;
+//responses[(level-1)].cycles += ci.cacheAccessCycles;
 
 if ((this->level) < this->ci.numCacheLevels) {
 
     cout << "Write to next cache" << endl;
 
-    //responses[(level-1)].cycles += ci.cacheAccessCycles; 
+    responses[(level)].cycles += this->nextCache->ci.cacheAccessCycles; 
 
     this->nextCache->writeToCache(responses, address, numBytes); 
 
