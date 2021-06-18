@@ -61,7 +61,7 @@ CacheController::CacheController(int id, CacheInfo ci, string tracefile) {
     this->programCache = programCache;
 }
 
-void CacheController::writeToCache(CacheResponse* responses, unsigned long int address, int numBytes){
+void CacheController::writeToCache(CacheResponse* responses, unsigned long int address, int numBytes, bool isCont){
 
 AddressInfo ai = getAddressInfo(address); 
 
@@ -93,26 +93,6 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
 
         std::cout << "A Hit at index " << ai.setIndex << " tag " << ai.tag << std::endl;
 
-        //AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
-
-        //cout << "End is " <<  endAddr.setIndex << " tag " << endAddr.tag << endl;
-
-        //int overflow = numBytes - ci.blockSize;
-
-
-        /*int overflow = (address + numBytes) % ci.blockSize;
-
-        cout << "overflow is " << overflow << endl;
-
-        if (endAddr.setIndex != ai.setIndex) {
-
-            cout << " Writing to overflow" << endl;
-
-            int nextAddr = address + (1 << this->ci.numByteOffsetBits);
-            writeToCache(responses, nextAddr, overflow);
-        }*/
-        
-        
         if (ci.wp == WritePolicy::WriteThrough) {
 
             //CacheController *cache = this->nextCache;
@@ -121,7 +101,7 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
 
             if (this->level < this->ci.numCacheLevels) {
                 //responses[(level)].cycles += this->nextCache->ci.cacheAccessCycles; 
-                this->nextCache->writeToCache(responses, address, numBytes);
+                this->nextCache->writeToCache(responses, address, numBytes, isCont);
             }
 
             else {
@@ -237,7 +217,7 @@ if ((this->level) < this->ci.numCacheLevels) {
 
     responses[(level)].cycles += this->nextCache->ci.cacheAccessCycles; 
 
-    this->nextCache->writeToCache(responses, address, numBytes); 
+    this->nextCache->writeToCache(responses, address, numBytes, isCont); 
 
 }
 
@@ -250,8 +230,16 @@ else {
 
     if (this->ci.wp == WritePolicy::WriteThrough) {
 
-        responses[(level-1)].cycles += (ci.memoryAccessCycles + numAddnAccess);
+        if (!isCont) {
+            responses[(level-1)].cycles += (ci.memoryAccessCycles + numAddnAccess);
 
+        }
+        else {
+
+            //Since memory already accessed, the "initial" access only takes 1 clock cycle
+
+            responses[(level-1)].cycles += (numAddnAccess + 1);
+        }
     }
 }
 
@@ -421,9 +409,9 @@ std::cout << "A miss" << std::endl;
 
 //cout << "overflow is " << overflow << endl;
 
-AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
+//AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
 
-int overflow = (address + numBytes - 1 ) % ci.blockSize;
+//int overflow = (address + numBytes - 1 ) % ci.blockSize;
 
 //if (overflow > 0) { 
 /*if (endAddr.setIndex != ai.setIndex) {
@@ -556,13 +544,18 @@ void CacheController::cacheAccess(CacheResponse *responses, bool isWrite, unsign
     //double requOps = ceil((double)numBytes / ci.blockSize);
 
     for (int operations = 0; operations < int(requOps); operations++) {
-   
+ 
+    //Determine if the operation in question is a continuation of another
+    // (Useful for computing final memory access values)    
+
+    bool isCont = (operations != 0);    
+
     int adr = address + (ci.blockSize * operations);
 
     int remBytes = numBytes - (ci.blockSize * operations);
 
     if (isWrite) {
-        writeToCache(responses, adr, remBytes);
+        writeToCache(responses, adr, remBytes, isCont);
     }
 
     else {

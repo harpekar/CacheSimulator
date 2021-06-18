@@ -42,7 +42,7 @@ class CacheController {
 		// function to allow read or write access to the cache
 		void cacheAccess(CacheResponse*, bool, unsigned long int, int);
 
-        void writeToCache(CacheResponse*, unsigned long int, int);
+        void writeToCache(CacheResponse*, unsigned long int, int, bool);
         void readFromCache(CacheResponse*, unsigned long int, int);
 
         void evictTo(BlockEntry);
