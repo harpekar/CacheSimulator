@@ -46,7 +46,7 @@ CacheController::CacheController(int id, CacheInfo ci, string tracefile) {
 
     //Initialize each cache block at each address with the given associativity level
    
-    cout << ci.numberSets << endl;  
+    //cout << ci.blockSize << endl;  
 
     for (unsigned int i = 0; i < ci.numberSets; i++) {
 
@@ -93,6 +93,26 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
 
         std::cout << "A Hit at index " << ai.setIndex << " tag " << ai.tag << std::endl;
 
+        //AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
+
+        //cout << "End is " <<  endAddr.setIndex << " tag " << endAddr.tag << endl;
+
+        //int overflow = numBytes - ci.blockSize;
+
+
+        /*int overflow = (address + numBytes) % ci.blockSize;
+
+        cout << "overflow is " << overflow << endl;
+
+        if (endAddr.setIndex != ai.setIndex) {
+
+            cout << " Writing to overflow" << endl;
+
+            int nextAddr = address + (1 << this->ci.numByteOffsetBits);
+            writeToCache(responses, nextAddr, overflow);
+        }*/
+        
+        
         if (ci.wp == WritePolicy::WriteThrough) {
 
             //CacheController *cache = this->nextCache;
@@ -113,18 +133,7 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
         else {
             programCache.at(ai.setIndex).front().dirtyBit = true;
         }
-        
-        int overflow = numBytes - ci.blockSize;
-
-        cout << "overflow is " << overflow << endl;
-
-        if (overflow > 0) {
-
-            cout << " Writing to overflow" << endl;
-
-            int nextAddr = address + (1 << this->ci.numByteOffsetBits);
-            writeToCache(responses, nextAddr, overflow);
-        }
+       
 
 
     return;
@@ -202,7 +211,7 @@ if (((this->level) != 1)) {
     
     if (this->ci.wp == WritePolicy::WriteThrough) { 
 
-    //Always a hit if there was a previous miss on the same operation
+//    //Always a hit if there was a previous miss on the same operation
     responses[(level-1)].hits += 1;
 
     cout << "Already been here" << endl;
@@ -211,7 +220,7 @@ if (((this->level) != 1)) {
 }
 
 
-else { 
+if ((this->level) == 1) { 
 
     //If cache is L1, ensure cycles for probing and writing are counted
 
@@ -252,14 +261,22 @@ else {
 
 //}
 
-int overflow = numBytes - ci.blockSize;
+//int overflow = numBytes - ci.blockSize;
 
-if (overflow > 0) { 
+/*AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
+
+int overflow = (address + numBytes - 1 ) % ci.blockSize;
+
+cout << "overflow is " << overflow << endl;
+
+if (endAddr.setIndex != ai.setIndex) { 
 
     int nextAddr = address + (1 << this->ci.numByteOffsetBits);
 
     writeToCache(responses, nextAddr, overflow);
 }
+*/
+
 
 return;
 
@@ -314,16 +331,20 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
 
         cout << "End addr is index" << end.setIndex << " tag " << end.tag << endl;
 
-        int overflow = numBytes - ci.blockSize;
+        //int overflow = numBytes - ci.blockSize;
 
-        if (overflow > 0) { 
+        /*int overflow = (address + numBytes - 1 ) % ci.blockSize;
+        
+        AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
+
+        if (endAddr.setIndex != ai.setIndex) { 
 
             cout << "Reading again" << endl;
 
             int nextAddr = address + (1 << this->ci.numByteOffsetBits);
 
-            readFromCache(responses, nextAddr, (numBytes-ci.blockSize));
-        }
+            readFromCache(responses, nextAddr, overflow);
+        }*/
 
         return;
     }
@@ -395,17 +416,23 @@ std::cout << "A miss" << std::endl;
 
 //AddressInfo end = getAddressInfo(address + numBytes);
 
-int overflow = numBytes - ci.blockSize;
+//int overflow = numBytes - ci.blockSize;
 
-cout << "overflow is " << overflow << endl;
 
-if (overflow > 0) { 
+//cout << "overflow is " << overflow << endl;
+
+AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
+
+int overflow = (address + numBytes - 1 ) % ci.blockSize;
+
+//if (overflow > 0) { 
+/*if (endAddr.setIndex != ai.setIndex) {
     cout << "Reading more blocks" << endl;   
 
     int nextAddr = address + (1 << this->ci.numByteOffsetBits);
 
     readFromCache(responses, nextAddr, overflow);
-}
+}*/
 
 if ((this->level) < (this->ci.numCacheLevels)) {
 
@@ -508,8 +535,6 @@ void CacheController::cacheAccess(CacheResponse *responses, bool isWrite, unsign
     // determine the index and tag
 	//AddressInfo ai = getAddressInfo(address);
 
-
-
     for (unsigned int i = 0; i < 3; i++) {
 
         //Reset counters
@@ -521,21 +546,32 @@ void CacheController::cacheAccess(CacheResponse *responses, bool isWrite, unsign
     
     }
 
+    //Starting address after subtracting off Offset bits
+    //int start = (address - (address % ci.blockSize)); 
+
+    //int end = address + numBytes;
+
+    double requOps = ceil((double)(numBytes + (address % ci.blockSize)) / ci.blockSize);
+
     //double requOps = ceil((double)numBytes / ci.blockSize);
 
-    //for (int operations = 0; operations < int(requOps); operations++) {
-    
+    for (int operations = 0; operations < int(requOps); operations++) {
+   
+    int adr = address + (ci.blockSize * operations);
+
+    int remBytes = numBytes - (ci.blockSize * operations);
+
     if (isWrite) {
-        writeToCache(responses, address, numBytes);
+        writeToCache(responses, adr, remBytes);
     }
 
     else {
-        readFromCache(responses, address, numBytes);
+        readFromCache(responses, adr, remBytes);
     }
 
     // "Response" data structure maintains counters of hits, misses, and evictions, so load those into global counters
 
-    //}
+    }
 
 
 	if (responses[(level-1)].hits > 0)
@@ -593,6 +629,9 @@ void CacheController::runTracefile() {
 			istringstream hexStream(match.str(2));
 			hexStream >> std::hex >> address;
 			outfile << match.str(1) << match.str(2) << match.str(3) << match.str(4);
+
+
+
 			cacheAccess(responses, false, address, stoi(match.str(4)));
 			logEntry(outfile, responses);
 			
