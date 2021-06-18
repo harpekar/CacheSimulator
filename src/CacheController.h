@@ -46,6 +46,7 @@ class CacheController {
         void readFromCache(CacheResponse*, unsigned long int, int);
 
         void evictTo(BlockEntry);
+        BlockEntry evict(int);
         void addTo(BlockEntry);
 
 		// function that can compute the index and tag matching a specific address

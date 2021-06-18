@@ -133,25 +133,7 @@ BlockEntry requBlock {false,true,address};
  
 if (programCache.at(ai.setIndex).size() == ci.associativity) {
 
-    BlockEntry evicted;
-
-    if (ci.rp == ReplacementPolicy::LRU) {
-
-        evicted = programCache.at(ai.setIndex).back();
-
-        programCache.at(ai.setIndex).pop_back();
-    }
-    
-    else {
-        int random = rand() % programCache.at(ai.setIndex).size();
-        block = programCache.at(ai.setIndex).begin();
-        advance(block, random);   
-
-        evicted = (*block);
-
-        programCache.at(ai.setIndex).erase(block);
-
-    }
+    BlockEntry evicted = evict(ai.setIndex);
 
     AddressInfo evict = getAddressInfo(evicted.address);
 
@@ -187,19 +169,6 @@ std::cout << "A Miss" << std::endl;
 
 //Write-through
 
-if (((this->level) != 1)) {
-    
-    if (this->ci.wp == WritePolicy::WriteThrough) { 
-
-//    //Always a hit if there was a previous miss on the same operation
-    responses[(level-1)].hits += 1;
-
-    cout << "Already been here" << endl;
-    }
-    //responses[(level-1)].cycles += ci.cacheAccessCycles;
-}
-
-
 if ((this->level) == 1) { 
 
     //If cache is L1, ensure cycles for probing and writing are counted
@@ -209,16 +178,19 @@ if ((this->level) == 1) {
 
 cout << this->level << endl;
 
-//responses[(level-1)].cycles += ci.cacheAccessCycles;
-
 if ((this->level) < this->ci.numCacheLevels) {
 
     cout << "Write to next cache" << endl;
 
-    responses[(level)].cycles += this->nextCache->ci.cacheAccessCycles; 
+    if (this->ci.wp == WritePolicy::WriteThrough) {
 
-    this->nextCache->writeToCache(responses, address, numBytes, isCont); 
+        responses[level].cycles += this->nextCache->ci.cacheAccessCycles; 
 
+        responses[level].hits += 1;
+
+        this->nextCache->writeToCache(responses, address, numBytes, isCont); 
+
+    }
 }
 
 
@@ -242,29 +214,6 @@ else {
         }
     }
 }
-
-//else {
-
-//    responses[(level-1)].cycles += (ci.cacheAccessCycles + ci.memoryAccessCycles + numAddnAccess);
-
-//}
-
-//int overflow = numBytes - ci.blockSize;
-
-/*AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
-
-int overflow = (address + numBytes - 1 ) % ci.blockSize;
-
-cout << "overflow is " << overflow << endl;
-
-if (endAddr.setIndex != ai.setIndex) { 
-
-    int nextAddr = address + (1 << this->ci.numByteOffsetBits);
-
-    writeToCache(responses, nextAddr, overflow);
-}
-*/
-
 
 return;
 
@@ -319,21 +268,6 @@ for (block = programCache.at(ai.setIndex).begin(); block != programCache.at(ai.s
 
         cout << "End addr is index" << end.setIndex << " tag " << end.tag << endl;
 
-        //int overflow = numBytes - ci.blockSize;
-
-        /*int overflow = (address + numBytes - 1 ) % ci.blockSize;
-        
-        AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
-
-        if (endAddr.setIndex != ai.setIndex) { 
-
-            cout << "Reading again" << endl;
-
-            int nextAddr = address + (1 << this->ci.numByteOffsetBits);
-
-            readFromCache(responses, nextAddr, overflow);
-        }*/
-
         return;
     }
 }
@@ -346,25 +280,7 @@ cout << "size at index is " << programCache.at(ai.setIndex).size() << endl;
  
 if (programCache.at(ai.setIndex).size() == this->ci.associativity) {
 
-    BlockEntry evicted;
-
-    if (ci.rp == ReplacementPolicy::LRU){
-
-        evicted = programCache.at(ai.setIndex).back();
-
-        programCache.at(ai.setIndex).pop_back();
-    }
-
-    else {
-        int random = rand() % programCache.at(ai.setIndex).size();
-        block = programCache.at(ai.setIndex).begin();
-        advance(block, random);   
-
-        evicted = (*block);
-        //evictAddr = programCache.at(ai.setIndex).at
-
-        programCache.at(ai.setIndex).erase(block);
-    }
+    BlockEntry evicted = evict(ai.setIndex);
 
     if ((this->level) == this->ci.numCacheLevels) {
         if ((this->ci.wp == WritePolicy::WriteBack) && (evicted.dirtyBit == true)) {
@@ -400,28 +316,6 @@ responses[(level-1)].misses += 1;
 
 std::cout << "A miss" << std::endl;
 
-//cout << (numBytes - signed(this->ci.blockSize)) << endl;
-
-//AddressInfo end = getAddressInfo(address + numBytes);
-
-//int overflow = numBytes - ci.blockSize;
-
-
-//cout << "overflow is " << overflow << endl;
-
-//AddressInfo endAddr = getAddressInfo(address + numBytes - 1);
-
-//int overflow = (address + numBytes - 1 ) % ci.blockSize;
-
-//if (overflow > 0) { 
-/*if (endAddr.setIndex != ai.setIndex) {
-    cout << "Reading more blocks" << endl;   
-
-    int nextAddr = address + (1 << this->ci.numByteOffsetBits);
-
-    readFromCache(responses, nextAddr, overflow);
-}*/
-
 if ((this->level) < (this->ci.numCacheLevels)) {
 
     cout << "Reading from next cache" << endl;
@@ -431,6 +325,7 @@ if ((this->level) < (this->ci.numCacheLevels)) {
 }
 else {
     cout << "Accessing main memory" << endl;
+
     responses[(level-1)].cycles += ci.memoryAccessCycles + numAddnAccess;
 }
 
@@ -439,6 +334,8 @@ return;
 
 }
 
+//Function that handles adding a block to a cache level without using clock cycles 
+// (During an eviction) 
 
 void CacheController::addTo(BlockEntry evicted) { 
 
@@ -464,7 +361,6 @@ void CacheController::addTo(BlockEntry evicted) {
         
     }
 
-
     cout << "Pushing" << endl;
 
     this->programCache.at(ai.setIndex).push_front(block);
@@ -472,6 +368,8 @@ void CacheController::addTo(BlockEntry evicted) {
     return;
 
 }
+
+//Function that handles evicting from one cache level to the next
 
 void CacheController::evictTo(BlockEntry evicted) {
 
@@ -485,6 +383,9 @@ void CacheController::evictTo(BlockEntry evicted) {
 
     std::list<BlockEntry>::iterator block;
 
+
+    //Check if block already exists in cache
+
     for (block = this->programCache.at(ai.setIndex).begin(); block != this->programCache.at(ai.setIndex).end(); block++) {
 
         if ((*block).address == evicted.address) {
@@ -495,27 +396,56 @@ void CacheController::evictTo(BlockEntry evicted) {
 
     }
 
+    if (level == ci.numCacheLevels) { 
+
+        return;
+    }
+
     if ((this->programCache.at(ai.setIndex).size() == ci.associativity)) {
 
         //If evicted from last cache, block simply disappears
+        //If not last cache, but index is full, evict again to next cache level down
 
         cout << ci.numCacheLevels << endl;
 
-        if (level < ci.numCacheLevels) {    
-            this->nextCache->evictTo(evicted);
+        BlockEntry removed = this->evict(ai.setIndex);
+        this->nextCache->evictTo(removed); //Remove the correct block so new block can be added
 
-        }
+    }
+
+    cout << "adding" << endl;
+
+    this->addTo(evicted);
+
+    return;
+}
+
+BlockEntry CacheController::evict(int index) { 
+
+    BlockEntry evicted;
+
+    std::list<BlockEntry>::iterator block;
+    
+    if (ci.rp == ReplacementPolicy::LRU){
+
+        evicted = programCache.at(index).back();
+
+        programCache.at(index).pop_back();
     }
 
     else {
-       
-        cout << "adding" << endl;
+        int random = rand() % programCache.at(index).size();
+        block = programCache.at(index).begin();
+        advance(block, random);   
 
-        this->addTo(evicted);
+        evicted = (*block);
+        //evictAddr = programCache.at(ai.setIndex).at
 
+        programCache.at(index).erase(block);
     }
 
-    return;
+    return evicted;
+
 }
 
 void CacheController::cacheAccess(CacheResponse *responses, bool isWrite, unsigned long int address, int numBytes) {
@@ -541,7 +471,7 @@ void CacheController::cacheAccess(CacheResponse *responses, bool isWrite, unsign
 
     double requOps = ceil((double)(numBytes + (address % ci.blockSize)) / ci.blockSize);
 
-    //double requOps = ceil((double)numBytes / ci.blockSize);
+    //bool isCont = 
 
     for (int operations = 0; operations < int(requOps); operations++) {
  
